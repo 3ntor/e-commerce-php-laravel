@@ -14,7 +14,7 @@ use App\Http\Controllers\Admin\SliderController;
 use App\Http\Controllers\Admin\OfferController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\BannerController;
-
+use App\Http\Controllers\Admin\OrderController;
 
 
 Auth::routes();
@@ -44,7 +44,6 @@ Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear')
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
 Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
-
 
 Route::get('/contact', [ContactController::class, 'index'])->name('contact.contact');
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.contact.store');
@@ -83,5 +82,11 @@ Route::middleware(['auth:admin'])->group(function () {
         Route::resource('admin/offers', OfferController::class);
         Route::resource('admin/services', ServiceController::class);
         Route::resource('admin/banners', BannerController::class);
+
+        // Orders Routes
+        Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
+        Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('orders.destroy');
     });
 });

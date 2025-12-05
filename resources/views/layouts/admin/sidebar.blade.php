@@ -159,6 +159,66 @@
     </a>
 </li>
 
+
+<!-- Orders Management -->
+<li class="nav-item {{ request()->is('admin/orders*') ? 'menu-open' : '' }}">
+    <a href="#" class="nav-link {{ request()->is('admin/orders*') ? 'active' : '' }}">
+        <i class="nav-icon fas fa-shopping-cart"></i>
+        <p>
+            إدارة الطلبات
+            @php
+                $pendingOrders = \App\Models\Order::where('status', 'pending')->count();
+            @endphp
+            @if($pendingOrders > 0)
+                <span class="badge badge-danger right">{{ $pendingOrders }}</span>
+            @endif
+            <i class="fas fa-angle-left right"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a href="{{ route('admin.orders.index') }}" 
+               class="nav-link {{ request()->routeIs('admin.orders.index') && !request()->query('status') ? 'active' : '' }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>كل الطلبات</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" 
+               class="nav-link {{ request()->query('status') === 'pending' ? 'active' : '' }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>
+                    قيد الانتظار
+                    @if($pendingOrders > 0)
+                        <span class="badge badge-warning right">{{ $pendingOrders }}</span>
+                    @endif
+                </p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('admin.orders.index', ['status' => 'processing']) }}" 
+               class="nav-link {{ request()->query('status') === 'processing' ? 'active' : '' }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>قيد التجهيز</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('admin.orders.index', ['status' => 'shipped']) }}" 
+               class="nav-link {{ request()->query('status') === 'shipped' ? 'active' : '' }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>تم الشحن</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('admin.orders.index', ['status' => 'delivered']) }}" 
+               class="nav-link {{ request()->query('status') === 'delivered' ? 'active' : '' }}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>تم التسليم</p>
+            </a>
+        </li>
+    </ul>
+</li>
+
           </ul>
    
         </li>

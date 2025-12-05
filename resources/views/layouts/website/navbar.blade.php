@@ -89,7 +89,12 @@
             <div class="d-inline-flex align-items-center">
                 <a href="#" class="text-muted d-flex align-items-center justify-content-center me-3"><span class="rounded-circle btn-md-square border"><i class="fas fa-random"></i></span></a>
                 <a href="#" class="text-muted d-flex align-items-center justify-content-center me-3"><span class="rounded-circle btn-md-square border"><i class="fas fa-heart"></i></span></a>
-                <a href="#" class="text-muted d-flex align-items-center justify-content-center"><span class="rounded-circle btn-md-square border"><i class="fas fa-shopping-cart"></i></span> <span class="text-dark ms-2">$0.00</span></a>
+<a href="#" class="text-muted d-flex align-items-center justify-content-center">
+    <span class="rounded-circle btn-md-square border">
+        <i class="fas fa-shopping-cart">    <span id="cart-count" class="text-dark ms-2">0</span>
+</i>
+    </span>
+</a>
             </div>
         </div>
     </div>
@@ -143,7 +148,7 @@
                         <a href="{{ route('website.home') }}" class="nav-item nav-link {{ request()->is('/') ? 'active' : '' }}">Home</a>
                         <a href="{{ route('products.products') }}" class="nav-item nav-link {{ request()->is('shop') ? 'active' : '' }}">Shop</a>
                         <a href="{{ route('shopcart.index') }}" class="nav-item nav-link">Shop Cart</a>
-                        <a href="{{ route('checkout.index') }}" class="nav-item nav-link">Checkout</a>
+                        {{-- <a href="{{ route('checkout.index') }}" class="nav-item nav-link">Checkout</a> --}}
                         <a href="{{ route('contact.contact') }}" class="nav-item nav-link {{ request()->is('contact') ? 'active' : '' }} me-2">Contact</a>
                         <div class="nav-item dropdown d-block d-lg-none mb-3">
                             <a href="#" class="nav-link" data-bs-toggle="dropdown"><span class="dropdown-toggle">All Category</span></a>

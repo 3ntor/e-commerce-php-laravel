@@ -27,7 +27,7 @@ class CartController extends Controller
             }
         }
 
-        $shipping = session()->get('cart_shipping', 3.00); // شحن ثابت كمثال
+        $shipping = session()->get('cart_shipping', 3.00);
         $total = round($subtotal - $discount + $shipping, 2);
 
         return view('website.shopcart.index', compact('cart', 'subtotal', 'discount', 'shipping', 'total', 'couponCode'));
@@ -44,10 +44,22 @@ class CartController extends Controller
         $product = Product::findOrFail($request->product_id);
         $qty = $request->input('quantity', 1);
 
+        // التحقق من المخزون
+        if ($product->stock < $qty) {
+            return back()->with('error', 'الكمية المطلوبة غير متوفرة في المخزون!');
+        }
+
         $cart = session()->get('cart', []);
 
         if (isset($cart[$product->id])) {
-            $cart[$product->id]['quantity'] += $qty;
+            $newQty = $cart[$product->id]['quantity'] + $qty;
+            
+            // التحقق من المخزون عند الزيادة
+            if ($product->stock < $newQty) {
+                return back()->with('error', 'لا يمكن إضافة هذه الكمية. المتوفر: ' . $product->stock);
+            }
+            
+            $cart[$product->id]['quantity'] = $newQty;
         } else {
             $cart[$product->id] = [
                 'id' => $product->id,
@@ -61,10 +73,10 @@ class CartController extends Controller
 
         session()->put('cart', $cart);
 
-        return back()->with('success', 'Product added to cart.');
+        return back()->with('success', 'تم إضافة المنتج إلى السلة بنجاح!');
     }
 
-    // تحديث كمية منتج في الكارت (AJAX أو form)
+    // تحديث كمية منتج في الكارت (AJAX)
     public function update(Request $request)
     {
         $request->validate([
@@ -79,22 +91,48 @@ class CartController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Product not in cart.'], 404);
         }
 
+        // التحقق من المخزون
+        $product = Product::find($pid);
+        if (!$product || $product->stock < $request->quantity) {
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'الكمية المطلوبة غير متوفرة!'
+            ], 400);
+        }
+
+        // تحديث الكمية
         $cart[$pid]['quantity'] = (int)$request->quantity;
         session()->put('cart', $cart);
 
+        // حساب الإجماليات
         $subtotal = collect($cart)->reduce(fn($carry, $item) => $carry + ($item['price'] * $item['quantity']), 0);
+        
+        $coupon = session()->get('cart_coupon', null);
+        $discount = 0;
+        if ($coupon) {
+            if (($coupon['type'] ?? null) === 'percent') {
+                $discount = round($subtotal * ($coupon['value'] / 100), 2);
+            } elseif (($coupon['type'] ?? null) === 'fixed') {
+                $discount = min($subtotal, $coupon['value']);
+            }
+        }
+
+        $shipping = session()->get('cart_shipping', 3.00);
+        $total = round($subtotal - $discount + $shipping, 2);
+        
+        $lineTotal = $cart[$pid]['price'] * $cart[$pid]['quantity'];
 
         return response()->json([
-        'status' => 'success',
-        'line_total' => $lineTotal,
-        'subtotal' => $subtotal,
-        'discount' => $discount ?? 0,
-        'shipping' => $shipping ?? 0,
-        'total' => $total,
+            'status' => 'success',
+            'line_total' => number_format($lineTotal, 2),
+            'subtotal' => number_format($subtotal, 2),
+            'discount' => number_format($discount, 2),
+            'shipping' => number_format($shipping, 2),
+            'total' => number_format($total, 2),
         ]);
     }
 
-    // إزالة منتج من الكارت
+    // إزالة منتج من الكارت (AJAX)
     public function remove(Request $request)
     {
         $request->validate([
@@ -109,10 +147,33 @@ class CartController extends Controller
             session()->put('cart', $cart);
         }
 
-        return back()->with('success', 'Product removed from cart.');
+        // حساب الإجماليات بعد الحذف
+        $subtotal = collect($cart)->reduce(fn($carry, $item) => $carry + ($item['price'] * $item['quantity']), 0);
+        
+        $coupon = session()->get('cart_coupon', null);
+        $discount = 0;
+        if ($coupon) {
+            if (($coupon['type'] ?? null) === 'percent') {
+                $discount = round($subtotal * ($coupon['value'] / 100), 2);
+            } elseif (($coupon['type'] ?? null) === 'fixed') {
+                $discount = min($subtotal, $coupon['value']);
+            }
+        }
+
+        $shipping = session()->get('cart_shipping', 3.00);
+        $total = round($subtotal - $discount + $shipping, 2);
+
+        return response()->json([
+            'status' => 'success',
+            'subtotal' => number_format($subtotal, 2),
+            'discount' => number_format($discount, 2),
+            'shipping' => number_format($shipping, 2),
+            'total' => number_format($total, 2),
+            'message' => 'تم إزالة المنتج من السلة.'
+        ]);
     }
 
-    // تطبيق كوبون
+    // تطبيق كوبون (AJAX)
     public function applyCoupon(Request $request)
     {
         $request->validate([
@@ -127,17 +188,29 @@ class CartController extends Controller
         ];
 
         if (!isset($available[$code])) {
-            return back()->with('error', 'Invalid coupon code.');
+            return response()->json([
+                'status' => 'error',
+                'message' => 'كود الخصم غير صحيح.'
+            ], 400);
         }
 
         session()->put('cart_coupon', array_merge(['code' => $code], $available[$code]));
-        return back()->with('success', 'Coupon applied.');
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم تطبيق كود الخصم بنجاح!'
+        ]);
     }
-    // مسح الكارت بالكامل
+
+    // مسح الكارت بالكامل (AJAX)
     public function clear()
     {
         session()->forget('cart');
         session()->forget('cart_coupon');
-        return back()->with('success', 'Cart cleared.');
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم مسح السلة بالكامل.'
+        ]);
     }
 }

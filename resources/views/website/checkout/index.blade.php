@@ -3,27 +3,50 @@
 @section('content')
     <div class="container-fluid page-header py-5">
         <h1 class="text-center text-white display-6 wow fadeInUp" data-wow-delay="0.1s">
-            @if(isset($search) && $search)
-                Search Results for "{{ $search }}"
-            @elseif(isset($category))
-                {{ $category->name }}
-            @else
-                CheckOut Page
-            @endif
+            CheckOut Page
         </h1>
         <ol class="breadcrumb justify-content-center mb-0 wow fadeInUp" data-wow-delay="0.3s">
             <li class="breadcrumb-item"><a href="{{ route('website.home') }}">Home</a></li>
-            <li class="breadcrumb-item active text-white">Products</li>
+            <li class="breadcrumb-item"><a href="{{ route('shopcart.index') }}">Cart</a></li>
+            <li class="breadcrumb-item active text-white">Checkout</li>
         </ol>
     </div>
+
 @include('website.partials.services')
 
 <div class="container-fluid bg-light overflow-hidden py-5">
     <div class="container py-5">
 
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show">
+                {{ session('success') }}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show">
+                {{ session('error') }}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show">
+                <ul class="mb-0">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
+        @endif
+
         <h1 class="mb-4 wow fadeInUp" data-wow-delay="0.1s">Billing details</h1>
 
-        <form action="#">
+        <!-- تعديل الـ Form Action -->
+        <form action="{{ route('checkout.store') }}" method="POST">
+            @csrf
 
             <div class="row g-5">
 
@@ -34,67 +57,58 @@
                         <div class="col-md-6">
                             <div class="form-item w-100">
                                 <label class="form-label my-3">First Name<sup>*</sup></label>
-                                <input type="text" class="form-control">
+                                <input type="text" name="first_name" class="form-control" value="{{ old('first_name') }}" required>
                             </div>
                         </div>
 
                         <div class="col-md-6">
                             <div class="form-item w-100">
                                 <label class="form-label my-3">Last Name<sup>*</sup></label>
-                                <input type="text" class="form-control">
+                                <input type="text" name="last_name" class="form-control" value="{{ old('last_name') }}" required>
                             </div>
                         </div>
                     </div>
 
                     <div class="form-item">
-                        <label class="form-label my-3">Company Name<sup>*</sup></label>
-                        <input type="text" class="form-control">
+                        <label class="form-label my-3">Company Name</label>
+                        <input type="text" name="company" class="form-control" value="{{ old('company') }}">
                     </div>
 
                     <div class="form-item">
                         <label class="form-label my-3">Address<sup>*</sup></label>
-                        <input type="text" class="form-control" placeholder="House Number Street Name">
+                        <input type="text" name="address" class="form-control" placeholder="House Number Street Name" value="{{ old('address') }}" required>
                     </div>
 
                     <div class="form-item">
                         <label class="form-label my-3">Town/City<sup>*</sup></label>
-                        <input type="text" class="form-control">
+                        <input type="text" name="city" class="form-control" value="{{ old('city') }}" required>
                     </div>
 
                     <div class="form-item">
                         <label class="form-label my-3">Country<sup>*</sup></label>
-                        <input type="text" class="form-control">
+                        <input type="text" name="country" class="form-control" value="{{ old('country') }}" required>
                     </div>
 
                     <div class="form-item">
                         <label class="form-label my-3">Postcode/Zip<sup>*</sup></label>
-                        <input type="text" class="form-control">
+                        <input type="text" name="zipcode" class="form-control" value="{{ old('zipcode') }}" required>
                     </div>
 
                     <div class="form-item">
                         <label class="form-label my-3">Mobile<sup>*</sup></label>
-                        <input type="tel" class="form-control">
+                        <input type="tel" name="mobile" class="form-control" value="{{ old('mobile') }}" required>
                     </div>
 
                     <div class="form-item">
                         <label class="form-label my-3">Email Address<sup>*</sup></label>
-                        <input type="email" class="form-control">
-                    </div>
-
-                    <div class="form-check my-3">
-                        <input type="checkbox" class="form-check-input" id="Account-1">
-                        <label class="form-check-label" for="Account-1">Create an account?</label>
+                        <input type="email" name="email" class="form-control" value="{{ old('email') }}" required>
                     </div>
 
                     <hr>
 
-                    <div class="form-check my-3">
-                        <input type="checkbox" class="form-check-input" id="Address-1">
-                        <label class="form-check-label" for="Address-1">Ship to a different address?</label>
-                    </div>
-
                     <div class="form-item">
-                        <textarea class="form-control" rows="8" placeholder="Order Notes (Optional)"></textarea>
+                        <label class="form-label my-3">Order Notes (Optional)</label>
+                        <textarea name="notes" class="form-control" rows="5" placeholder="Notes about your order, e.g. special notes for delivery.">{{ old('notes') }}</textarea>
                     </div>
 
                 </div>
@@ -116,14 +130,9 @@
 
                             <tbody>
 
-                                @php
-                                    $subtotal = 0;
-                                @endphp
-
                                 @foreach($cart as $item)
                                     @php
                                         $lineTotal = $item['price'] * $item['quantity'];
-                                        $subtotal += $lineTotal;
                                     @endphp
 
                                     <tr class="text-center">
@@ -149,9 +158,7 @@
 
                                 <!-- Subtotal -->
                                 <tr>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
+                                    <td colspan="3"></td>
 
                                     <td class="py-4">
                                         <p class="mb-0 text-dark py-2">Subtotal</p>
@@ -166,52 +173,49 @@
                                     </td>
                                 </tr>
 
-                                <!-- SHIPPING OPTIONS -->
+                                @if($discount > 0)
                                 <tr>
-                                    <td></td>
+                                    <td colspan="3"></td>
                                     <td class="py-4">
-                                        <p class="mb-0 text-dark py-4">Shipping</p>
+                                        <p class="mb-0 text-success py-2">Discount</p>
                                     </td>
-
-                                    <td colspan="3" class="py-4">
-
-                                        <div class="form-check text-start">
-                                            <input type="radio" name="shipping" class="form-check-input bg-primary" value="0">
-                                            <label class="form-check-label">Free Shipping</label>
+                                    <td class="py-4">
+                                        <div class="py-2 text-center border-bottom border-top">
+                                            <p class="mb-0 text-success">
+                                                - ${{ number_format($discount, 2) }}
+                                            </p>
                                         </div>
+                                    </td>
+                                </tr>
+                                @endif
 
-                                        <div class="form-check text-start">
-                                            <input type="radio" name="shipping" class="form-check-input bg-primary" value="15">
-                                            <label class="form-check-label">Flat rate: $15.00</label>
+                                <!-- SHIPPING -->
+                                <tr>
+                                    <td colspan="3"></td>
+                                    <td class="py-4">
+                                        <p class="mb-0 text-dark py-2">Shipping</p>
+                                    </td>
+                                    <td class="py-4">
+                                        <div class="py-2 text-center border-bottom border-top">
+                                            <p class="mb-0 text-dark">
+                                                ${{ number_format($shipping, 2) }}
+                                            </p>
                                         </div>
-
-                                        <div class="form-check text-start">
-                                            <input type="radio" name="shipping" class="form-check-input bg-primary" value="8">
-                                            <label class="form-check-label">Local Pickup: $8.00</label>
-                                        </div>
-
                                     </td>
                                 </tr>
 
                                 <!-- TOTAL -->
-                                @php
-                                    $total = $subtotal; // shipping added later by JS or backend
-                                @endphp
-
                                 <tr>
-                                    <td></td>
+                                    <td colspan="3"></td>
 
                                     <td class="py-4">
-                                        <p class="mb-0 text-dark text-uppercase py-2">TOTAL</p>
+                                        <p class="mb-0 text-dark text-uppercase py-2"><strong>TOTAL</strong></p>
                                     </td>
-
-                                    <td></td>
-                                    <td></td>
 
                                     <td class="py-4">
                                         <div class="py-2 text-center border-bottom border-top">
                                             <p class="mb-0 text-dark">
-                                                ${{ number_format($total, 2) }}
+                                                <strong>${{ number_format($total, 2) }}</strong>
                                             </p>
                                         </div>
                                     </td>
@@ -221,49 +225,49 @@
                         </table>
                     </div>
 
+                    <!-- SHIPPING METHOD (Hidden input - backend will use default) -->
+                    <input type="hidden" name="shipping_method" value="standard">
+
                     <!-- PAYMENT METHODS -->
-                    <div class="row g-0 text-center align-items-center justify-content-center border-bottom py-2">
-                        <div class="col-12">
-                            <div class="form-check text-start my-2">
-                                <input type="radio" name="payment" class="form-check-input bg-primary" value="bank">
-                                <label class="form-check-label">Direct Bank Transfer</label>
-                            </div>
-                            <p class="text-start text-dark">
+                    <div class="mb-3">
+                        <h5 class="mb-3">Payment Method <span class="text-danger">*</span></h5>
+
+                        <div class="form-check mb-3">
+                            <input type="radio" name="payment_method" class="form-check-input" value="bank" id="payment-bank" required>
+                            <label class="form-check-label" for="payment-bank">
+                                <strong>Direct Bank Transfer</strong>
+                            </label>
+                            <p class="text-muted small ms-4">
                                 Make your payment directly into our bank account. Your order will be shipped after confirmation.
                             </p>
                         </div>
-                    </div>
 
-                    <div class="row g-4 text-center align-items-center justify-content-center border-bottom py-2">
-                        <div class="col-12">
-                            <div class="form-check text-start my-2">
-                                <input type="radio" name="payment" class="form-check-input bg-primary" value="check">
-                                <label class="form-check-label">Check Payments</label>
-                            </div>
+                        <div class="form-check mb-3">
+                            <input type="radio" name="payment_method" class="form-check-input" value="check" id="payment-check">
+                            <label class="form-check-label" for="payment-check">
+                                <strong>Check Payments</strong>
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input type="radio" name="payment_method" class="form-check-input" value="cod" id="payment-cod">
+                            <label class="form-check-label" for="payment-cod">
+                                <strong>Cash On Delivery</strong>
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input type="radio" name="payment_method" class="form-check-input" value="paypal" id="payment-paypal">
+                            <label class="form-check-label" for="payment-paypal">
+                                <strong>PayPal</strong>
+                            </label>
                         </div>
                     </div>
 
-                    <div class="row g-4 text-center align-items-center justify-content-center border-bottom py-2">
-                        <div class="col-12">
-                            <div class="form-check text-start my-2">
-                                <input type="radio" name="payment" class="form-check-input bg-primary" value="cod">
-                                <label class="form-check-label">Cash On Delivery</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row g-4 text-center align-items-center justify-content-center border-bottom py-2">
-                        <div class="col-12">
-                            <div class="form-check text-start my-2">
-                                <input type="radio" name="payment" class="form-check-input bg-primary" value="paypal">
-                                <label class="form-check-label">Paypal</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row g-4 text-center align-items-center justify-content-center pt-4">
-                        <button type="button" class="btn btn-primary py-3 px-4 w-100">
-                            Place Order
+                    <!-- Submit Button -->
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary py-3 px-4 w-100">
+                            <i class="fas fa-check-circle me-2"></i> Place Order
                         </button>
                     </div>
 

@@ -17,10 +17,16 @@
     <div class="container py-5">
 
         @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
+            <div class="alert alert-success alert-dismissible">
+                {{ session('success') }}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
         @endif
         @if(session('error'))
-            <div class="alert alert-danger">{{ session('error') }}</div>
+            <div class="alert alert-danger alert-dismissible">
+                {{ session('error') }}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
         @endif
 
         <div class="table-responsive">
@@ -56,17 +62,25 @@
                             <td>${{ number_format($item['price'], 2) }}</td>
                             <td>
                                 <div class="input-group quantity" style="width: 110px;">
-                                    <button class="btn btn-sm btn-minus rounded-circle bg-light border" data-action="decrease"><i class="fa fa-minus"></i></button>
-                                    <input type="text" class="form-control form-control-sm text-center border-0 qty-input" value="{{ $item['quantity'] }}" data-product-id="{{ $item['id'] }}">
-                                    <button class="btn btn-sm btn-plus rounded-circle bg-light border" data-action="increase"><i class="fa fa-plus"></i></button>
-                                </div>
+    <button class="btn btn-sm btn-minus rounded-circle bg-light border" data-action="decrease">
+        <i class="fa fa-minus"></i>
+    </button>
+    <input type="text" class="form-control form-control-sm text-center border-0 qty-input" 
+           value="{{ $item['quantity'] }}" 
+           data-product-id="{{ $item['id'] }}">
+    <button class="btn btn-sm btn-plus rounded-circle bg-light border" data-action="increase">
+        <i class="fa fa-plus"></i>
+    </button>
+    <!-- رسالة الخطأ -->
+    <div class="qty-error" style="color:red; font-size:0.8em; display:none;"></div>
+</div>
                             </td>
                             <td class="line-total">${{ number_format($lineTotal, 2) }}</td>
                             <td>
-                                <form method="POST" action="{{ route('cart.clear') }}">
+                                <form method="POST" action="{{ route('cart.remove') }}" class="remove-cart-item">
                                     @csrf
                                     <input type="hidden" name="product_id" value="{{ $item['id'] }}">
-                                    <button type="submit" class="btn btn-md rounded-circle bg-light border" data-product-id="{{ $item['id'] }}">
+                                    <button type="submit" class="btn btn-md rounded-circle bg-light border">
                                         <i class="fa fa-times text-danger"></i>
                                     </button>
                                 </form>
@@ -85,15 +99,15 @@
 
         <!-- Coupon & Clear Cart -->
         <div class="mt-3 d-flex align-items-center">
-<form class="me-3" id="coupon-form" method="POST" action="{{ route('cart.coupon') }}">
-    @csrf
-    <input type="text" name="coupon" class="border-0 border-bottom rounded me-2 py-2" placeholder="Coupon Code">
-    <button class="btn btn-primary rounded-pill px-4 py-2" type="submit">Apply Coupon</button>
-</form>
+            <form class="me-3" id="coupon-form" method="POST" action="{{ route('cart.coupon') }}">
+                @csrf
+                <input type="text" name="coupon" class="border-0 border-bottom rounded me-2 py-2" placeholder="Coupon Code">
+                <button class="btn btn-primary rounded-pill px-4 py-2" type="submit">Apply Coupon</button>
+            </form>
 
             <form method="POST" action="{{ route('cart.clear') }}">
                 @csrf
-                <button id="clear-cart-btn" class="btn btn-outline-secondary rounded-pill px-4 py-2" type="submit">Clear Cart</button>
+                <button class="btn btn-outline-secondary rounded-pill px-4 py-2" type="submit">Clear Cart</button>
             </form>
         </div>
 
@@ -119,7 +133,7 @@
                             <h6 class="mb-0 me-4">Shipping</h6>
                             <p id="shipping" class="mb-0">${{ number_format($shipping, 2) }}</p>
                         </div>
-                        <p  class="mb-0 text-end">Shipping to your address.</p>
+                        <p class="mb-0 text-end">Shipping to your address.</p>
                     </div>
 
                     <div class="py-4 mb-4 border-top border-bottom d-flex justify-content-between">
@@ -127,6 +141,9 @@
                         <p id="total" class="mb-0 pe-4">${{ number_format($total, 2) }}</p>
                     </div>
 
+                    <a href="{{ route('checkout.index') }}" class="btn btn-primary w-100 py-3">
+                        Proceed to Checkout
+                    </a>
                 </div>
             </div>
         </div>
@@ -137,11 +154,21 @@
 @endsection
 
 @push('scripts')
+
+
 <script>
+
+console.log("SCRIPT LOADED");
+
 document.addEventListener('DOMContentLoaded', function () {
 
-    // --- تحديث الكمية ---
-    function updateQty(productId, qty, row) {
+    // تحديث الكمية
+    function updateQty(productId, qty, row, input) {
+
+        // نخزن القيمة القديمة قبل الزيادة
+        const oldValue = input.dataset.oldValue ? parseInt(input.dataset.oldValue) : parseInt(input.value);
+        input.dataset.oldValue = oldValue;
+
         fetch("{{ route('cart.update') }}", {
             method: 'POST',
             headers: {
@@ -152,118 +179,96 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(res => res.json())
         .then(data => {
-            if(data.status === 'success') {
-                // تحديث قيمة خط المنتج
-                row.querySelector('.line-total').textContent = '$' + data.line_total.toFixed(2);
-                // تحديث القيم الكلية
-                updateCartTotals(data);
-            } else {
-                alert(data.message || 'Error updating cart');
+            // لو حصل خطأ مثل: الكمية غير متاحة
+            if(data.status !== 'success') {
+                
+                showError(input, data.message || 'الكمية المطلوبة غير متاحة');
+
+                // نرجع القيمة القديمة بدل الجديدة
+                input.value = oldValue;
+
+                return;
             }
+
+            // مسح رسالة الخطأ
+            clearError(input);
+
+            // تحديث UI
+            row.querySelector('.line-total').textContent = '$' + data.line_total;
+            document.querySelector('#subtotal').textContent = '$' + data.subtotal;
+
+            const discountEl = document.querySelector('#discount');
+            if(discountEl) discountEl.textContent = '- $' + data.discount;
+
+            document.querySelector('#shipping').textContent = '$' + data.shipping;
+            document.querySelector('#total').textContent = '$' + data.total;
+
+            input.dataset.oldValue = qty; // تحديث القيمة القديمة
         })
-        .catch(err => console.error(err));
+        .catch(err => {
+            console.error(err);
+
+            showError(input, 'حدث خطأ! حاول مرة أخرى.');
+
+            // رجوع القيمة القديمة
+            input.value = input.dataset.oldValue || 1;
+        });
     }
 
-    function updateCartTotals(data) {
-        document.querySelector('#subtotal').textContent = '$' + data.subtotal.toFixed(2);
-        document.querySelector('#discount').textContent = '- $' + data.discount.toFixed(2);
-        document.querySelector('#shipping').textContent = '$' + data.shipping.toFixed(2);
-        document.querySelector('#total').textContent = '$' + data.total.toFixed(2);
+    // إظهار رسالة تحت حقل الكمية
+    function showError(input, message) {
+        clearError(input);
+        let err = document.createElement('small');
+        err.className = "text-danger qty-error";
+        err.textContent = message;
+        input.closest('.quantity').appendChild(err);
     }
 
+    // إزالة رسالة الخطأ إن وجدت
+    function clearError(input) {
+        let old = input.closest('.quantity').querySelector('.qty-error');
+        if(old) old.remove();
+    }
+
+    function updateCartIcon() {
+        let totalQty = 0;
+        document.querySelectorAll('.qty-input').forEach(input => {
+            totalQty += parseInt(input.value);
+        });
+        const cartCount = document.querySelector('#cart-count');
+        if(cartCount) cartCount.textContent = totalQty;
+    }
+
+    // زر الـ Plus/Minus
     document.querySelectorAll('.quantity').forEach(wrapper => {
         const input = wrapper.querySelector('.qty-input');
         const minus = wrapper.querySelector('[data-action="decrease"]');
         const plus = wrapper.querySelector('[data-action="increase"]');
 
-        minus?.addEventListener('click', () => {
-            let val = Math.max(1, parseInt(input.value) - 1);
-            input.value = val;
-            updateQty(input.dataset.productId, val, wrapper.closest('tr'));
-        });
-
         plus?.addEventListener('click', () => {
             let val = parseInt(input.value) + 1;
             input.value = val;
-            updateQty(input.dataset.productId, val, wrapper.closest('tr'));
+            updateQty(input.dataset.productId, val, wrapper.closest('tr'), input);
+            updateCartIcon();
+        });
+
+        minus?.addEventListener('click', () => {
+            let val = Math.max(1, parseInt(input.value) - 1);
+            input.value = val;
+            updateQty(input.dataset.productId, val, wrapper.closest('tr'), input);
+            updateCartIcon();
         });
 
         input.addEventListener('blur', () => {
             let val = parseInt(input.value);
             if(!val || val < 1) val = 1;
             input.value = val;
-            updateQty(input.dataset.productId, val, wrapper.closest('tr'));
-        });
-    });
-
-    // --- إزالة منتج ---
-    document.querySelectorAll('.remove-item-btn').forEach(btn => {
-        btn.addEventListener('click', function (e) {
-            e.preventDefault();
-            const row = this.closest('tr');
-            const productId = this.dataset.productId;
-
-            fetch("{{ route('cart.remove') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({ product_id: productId })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    row.remove();
-                    updateCartTotals(data);
-                } else {
-                    alert(data.message || 'Error removing item');
-                }
-            });
-        });
-    });
-
-    // --- مسح الكارت ---
-    document.querySelector('#clear-cart-btn')?.addEventListener('click', function(e) {
-        e.preventDefault();
-        fetch("{{ route('cart.clear') }}", {
-            method: 'POST',
-            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'}
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === 'success') {
-                document.querySelector('tbody').innerHTML = '<tr><td colspan="6" class="text-center py-5">Your cart is empty</td></tr>';
-                updateCartTotals(data);
-            }
-        });
-    });
-
-    // --- تطبيق كوبون ---
-    document.querySelector('#coupon-form')?.addEventListener('submit', function(e){
-        e.preventDefault();
-        const couponInput = this.querySelector('input[name="coupon"]').value;
-
-        fetch("{{ route('cart.coupon') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ coupon: couponInput })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === 'success') {
-                alert('Coupon applied!');
-                location.reload(); // أو ممكن تحدث القيم مباشرة إذا حابب بدون reload
-            } else {
-                alert(data.message || 'Invalid coupon');
-            }
+            updateQty(input.dataset.productId, val, wrapper.closest('tr'), input);
+            updateCartIcon();
         });
     });
 
 });
-
 </script>
+
 @endpush

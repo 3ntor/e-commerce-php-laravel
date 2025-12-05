@@ -76,7 +76,7 @@ public function home() {
         
         $products = $query->paginate(10);
         
-        return view('website.products', compact('products', 'categories', 'search','offers', 'services'));
+        return view('website.products', compact('products', 'categories', 'search'));
     }
 
     // ========== NEW: Get products by filter (AJAX) ==========
